@@ -1,29 +1,37 @@
-import { Geist, Geist_Mono, IBM_Plex_Sans } from "next/font/google"
-
+import type { Metadata } from "next"
+import { Inter_Tight, JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
-const ibmPlexSans = IBM_Plex_Sans({subsets:['latin'],variable:'--font-sans'})
-
-const fontMono = Geist_Mono({
+const interTight = Inter_Tight({
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-sans",
+  weight: ["400", "500", "600", "700"],
 })
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  weight: ["400", "500", "700"],
+})
+
+export const metadata: Metadata = {
+  title: "xService · ITSM & ITAM",
+  description: "Onyx & Gold — quiet luxury for service ops",
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
+      className={cn("dark", interTight.variable, jetbrainsMono.variable)}
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", ibmPlexSans.variable)}
     >
-      <body>
-        <ThemeProvider>{children}</ThemeProvider>
+      <body className="antialiased">
+        <ThemeProvider defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )
