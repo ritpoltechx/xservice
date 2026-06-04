@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import {
   RiDashboardLine,
-  RiBriefcase2Line,
   RiTicket2Line,
   RiApps2Line,
   RiBarChartBoxLine,
@@ -61,32 +60,19 @@ interface NavSection {
   items: (NavItem | NavGroup)[]
 }
 
-const NAV: NavSection[] = [
+/* Top nav — scrollable */
+const NAV_TOP: NavSection[] = [
   {
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: RiDashboardLine },
-      { label: "My Work",   href: "/dashboard", icon: RiBriefcase2Line },
+      { label: "Dashboard",      href: "/dashboard",      icon: RiDashboardLine },
+      { label: "Service Catalog",href: "/service-catalog",icon: RiApps2Line     },
+      { label: "Reports",        href: "/dashboard",      icon: RiBarChartBoxLine },
     ],
   },
-  {
-    items: [
-      {
-        kind: "group",
-        label: "Tickets",
-        icon: RiTicket2Line,
-        defaultOpen: false,
-        children: [
-          { label: "All Ticket",       href: "/dashboard" },
-          { label: "Incidents",        href: "/dashboard" },
-          { label: "Service Request",  href: "/service-request" },
-          { label: "Problems",         href: "/dashboard" },
-          { label: "Changes",          href: "/dashboard" },
-        ],
-      },
-      { label: "Service Catalog", href: "/dashboard", icon: RiApps2Line },
-      { label: "Reports",         href: "/dashboard", icon: RiBarChartBoxLine },
-    ],
-  },
+]
+
+/* Bottom nav — pinned */
+const NAV_BOTTOM: NavSection[] = [
   {
     section: "Administration",
     items: [
@@ -94,7 +80,7 @@ const NAV: NavSection[] = [
         kind: "group",
         label: "User Access",
         icon: RiGroupLine,
-        defaultOpen: true,
+        defaultOpen: false,
         children: [
           { label: "Support Group", href: "/dashboard" },
         ],
@@ -103,7 +89,7 @@ const NAV: NavSection[] = [
         kind: "group",
         label: "Process Settings",
         icon: RiSettings4Line,
-        defaultOpen: true,
+        defaultOpen: false,
         children: [
           { label: "SLA Policies",      href: "/dashboard" },
           { label: "Workflow Designer", href: "/workflow-designer" },
@@ -115,9 +101,9 @@ const NAV: NavSection[] = [
         icon: RiPaintBrushLine,
         defaultOpen: false,
         children: [
-          { label: "Forms",  href: "/dashboard" },
-          { label: "Fields", href: "/dashboard" },
-          { label: "Views",  href: "/dashboard" },
+          { label: "Forms",        href: "/customization/forms"        },
+          { label: "Fields",       href: "/customization/fields"       },
+          { label: "Ticket Types", href: "/customization/ticket-types" },
         ],
       },
       {
@@ -135,7 +121,7 @@ const NAV: NavSection[] = [
   {
     section: "Module Admin",
     items: [
-      { label: "User Management", href: "/dashboard", icon: RiTeamLine },
+      { label: "User Management", href: "/user-management", icon: RiTeamLine },
     ],
   },
 ]
@@ -281,6 +267,58 @@ function NavGroupItem({ group, collapsed }: { group: NavGroup; collapsed: boolea
   )
 }
 
+/* ── Nav section renderer ── */
+function NavSectionBlock({ section, si, sideCollapsed }: { section: NavSection; si: number; sideCollapsed: boolean }) {
+  return (
+    <div key={si} style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+      {section.section && !sideCollapsed && (
+        <div style={{
+          fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: ".12em",
+          textTransform: "uppercase", color: "var(--txt-5)",
+          padding: "8px 9px 3px", marginTop: si > 0 ? 4 : 0,
+        }}>{section.section}</div>
+      )}
+      {section.items.map((item, ii) => {
+        if (item.kind === "group") {
+          return <NavGroupItem key={ii} group={item as NavGroup} collapsed={sideCollapsed} />
+        }
+        const leaf = item as NavItem
+        return (
+          <Link
+            key={ii}
+            href={leaf.href}
+            title={sideCollapsed ? leaf.label : undefined}
+            style={{
+              display: "flex", alignItems: "center",
+              gap: sideCollapsed ? 0 : 9,
+              padding: sideCollapsed ? "8px" : "8px 9px",
+              justifyContent: sideCollapsed ? "center" : "flex-start",
+              borderRadius: 6, fontSize: 13,
+              color: leaf.active ? "var(--txt)" : "var(--txt-2)",
+              background: leaf.active ? "var(--bg-2)" : "transparent",
+              fontWeight: leaf.active ? 500 : 400,
+              textDecoration: "none", transition: "color .12s, background .12s",
+              position: "relative",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-2)"; (e.currentTarget as HTMLElement).style.color = "var(--txt)" }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = leaf.active ? "var(--bg-2)" : "transparent"; (e.currentTarget as HTMLElement).style.color = leaf.active ? "var(--txt)" : "var(--txt-2)" }}
+          >
+            {leaf.active && (
+              <span style={{
+                position: "absolute", left: 0, top: 6, bottom: 6, width: 2,
+                background: "linear-gradient(180deg, var(--gold-3), var(--gold))",
+                borderRadius: "0 2px 2px 0", boxShadow: "0 0 8px var(--gold-glow)",
+              }}/>
+            )}
+            <leaf.icon size={14} style={{ flexShrink: 0, color: leaf.active ? "var(--gold)" : "var(--txt-3)" }} />
+            {!sideCollapsed && <span>{leaf.label}</span>}
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+
 /* ── Skeleton shimmer ── */
 function Skeleton({ w, h, r = 4 }: { w: string | number; h: number; r?: number }) {
   return (
@@ -408,28 +446,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const sideW = sideCollapsed ? 52 : 224
 
-  const computedNAV = NAV.map(section => ({
-    ...section,
-    items: section.items.map(item => {
-      if (item.kind === "group") {
-        const children = item.children.map(child => ({
-          ...child,
-          active: child.href === pathname && (pathname !== "/dashboard" || child.label === "Dashboard")
-        }))
-        const hasActive = children.some(c => c.active)
-        return {
-          ...item,
-          children,
-          defaultOpen: item.defaultOpen || hasActive
+  function computeNav(nav: NavSection[]): NavSection[] {
+    return nav.map((section) => ({
+      ...section,
+      items: section.items.map((item) => {
+        if (item.kind === "group") {
+          const g = item as NavGroup
+          const children = g.children.map((child) => ({
+            ...child,
+            active: child.href === pathname && (pathname !== "/dashboard" || child.label === "Dashboard"),
+          }))
+          const hasActive = children.some((c) => c.active)
+          return { ...g, children, defaultOpen: g.defaultOpen || hasActive } as NavGroup
         }
-      } else {
+        const leaf = item as NavItem
         return {
-          ...item,
-          active: item.href === pathname && (pathname !== "/dashboard" || item.label === "Dashboard")
-        }
-      }
-    })
-  }))
+          ...leaf,
+          active: leaf.href === pathname && (pathname !== "/dashboard" || leaf.label === "Dashboard"),
+        } as NavItem
+      }),
+    }))
+  }
+
+  const computedTop    = computeNav(NAV_TOP)
+  const computedBottom = computeNav(NAV_BOTTOM)
 
   return (
     <div className="app-shell">
@@ -763,64 +803,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
           </div>
 
-          {/* Nav sections */}
-          <nav style={{ flex: 1, padding: sideCollapsed ? "4px 6px" : "4px 10px", display: "flex", flexDirection: "column", gap: 1 }}>
-            {computedNAV.map((section, si) => (
-              <div key={si}>
-                {/* Section header */}
-                {section.section && !sideCollapsed && (
-                  <div style={{
-                    padding: "14px 6px 5px",
-                    fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: ".18em",
-                    textTransform: "uppercase", color: "var(--txt-4)",
-                    display: "flex", alignItems: "center", gap: 6,
-                  }}>
-                    {section.section}
-                  </div>
-                )}
-                {/* Divider between sections with no label */}
-                {!section.section && si > 0 && (
-                  <div style={{ height: 1, background: "var(--line)", margin: "6px 0" }} />
-                )}
+          {/* Nav — top (scrollable) + bottom (pinned) */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            {/* Top nav — grows and scrolls */}
+            <nav style={{ flex: 1, overflowY: "auto", padding: sideCollapsed ? "4px 6px" : "4px 10px", display: "flex", flexDirection: "column", gap: 1 }}>
+              {computedTop.map((section, si) => (
+                <NavSectionBlock key={si} section={section} si={si} sideCollapsed={sideCollapsed} />
+              ))}
+            </nav>
 
-                {section.items.map((item) => {
-                  if (item.kind === "group") {
-                    return <NavGroupItem key={item.label} group={item as NavGroup} collapsed={sideCollapsed} />
-                  }
-                  const leaf = item as NavItem
-                  return (
-                    <Link key={leaf.label} href={leaf.href}
-                      title={sideCollapsed ? leaf.label : undefined}
-                      style={{
-                        display: "flex", alignItems: "center",
-                        gap: sideCollapsed ? 0 : 9,
-                        justifyContent: sideCollapsed ? "center" : "flex-start",
-                        padding: sideCollapsed ? "8px" : "8px 9px",
-                        borderRadius: 6, fontSize: 13, textDecoration: "none",
-                        color: leaf.active ? "var(--txt)" : "var(--txt-2)",
-                        background: leaf.active ? "var(--bg-2)" : "transparent",
-                        fontWeight: leaf.active ? 500 : 400,
-                        transition: "background .12s, color .12s",
-                        position: "relative",
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-2)"; (e.currentTarget as HTMLElement).style.color = "var(--txt)" }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = leaf.active ? "var(--bg-2)" : "transparent"; (e.currentTarget as HTMLElement).style.color = leaf.active ? "var(--txt)" : "var(--txt-2)" }}
-                    >
-                      {leaf.active && (
-                        <span style={{
-                          position: "absolute", left: sideCollapsed ? 0 : -10, top: 6, bottom: 6, width: 2,
-                          background: "linear-gradient(180deg, var(--gold-3), var(--gold))",
-                          borderRadius: "0 2px 2px 0", boxShadow: "0 0 8px var(--gold-glow)",
-                        }}/>
-                      )}
-                      <leaf.icon size={14} style={{ flexShrink: 0, color: leaf.active ? "var(--gold)" : "var(--txt-3)" }} />
-                      {!sideCollapsed && leaf.label}
-                    </Link>
-                  )
-                })}
-              </div>
-            ))}
-          </nav>
+            {/* Bottom nav — pinned to bottom */}
+            <nav style={{ padding: sideCollapsed ? "4px 6px" : "4px 10px", borderTop: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 1 }}>
+              {computedBottom.map((section, si) => (
+                <NavSectionBlock key={si} section={section} si={si} sideCollapsed={sideCollapsed} />
+              ))}
+            </nav>
+          </div>
         </aside>
 
         {/* Page content */}

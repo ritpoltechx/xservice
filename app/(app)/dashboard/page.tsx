@@ -199,6 +199,44 @@ const RAIL_DATA: Record<string, {
     ],
     related: [],
   },
+  "REQ-2207": {
+    status: "pending",
+    tags: ["Pending", "access", "P2"],
+    meta: {
+      Type: "Access request",
+      Requester: "@sarah.obi",
+      Approved: "Pre-approved",
+      SLA: "2h 18m",
+      Items: "3× contractor VPN accounts",
+    },
+    timeline: [
+      { color: "gold", time: "12:13 · NOW", text: "Assigned to @ritpol.w for provisioning review." },
+      { color: "",     time: "11:30",       text: "Request submitted by sarah.obi." },
+    ],
+    stakeholders: [
+      { initials: "RW", name: "Ritpol W.", role: "IT ops · assigned", status: "investigating" },
+    ],
+    related: [],
+  },
+  "INC-4183": {
+    status: "investigating",
+    tags: ["Investigating", "integrations", "P3"],
+    meta: {
+      Service: "xService alerts",
+      Component: "SMTP relay",
+      Started: "11:48 UTC",
+      Affected: "3 users",
+      SLA: "5h 30m",
+    },
+    timeline: [
+      { color: "blue", time: "12:00 · NOW", text: "@ritpol.w investigating SMTP relay config — checking MX records." },
+      { color: "red",  time: "11:48",       text: "Email notifications stopped delivering from alert engine." },
+    ],
+    stakeholders: [
+      { initials: "RW", name: "Ritpol W.", role: "Integrations · assigned", status: "investigating" },
+    ],
+    related: [],
+  },
   "INC-4177": {
     status: "resolved",
     tags: ["Resolved", "payments", "P3"],
@@ -226,6 +264,27 @@ const ASSET_TILES = [
   { label: "Licenses expiring",  value: "17",     delta: "In next 30 days", cls: "gold" },
   { label: "Unassigned · risk",  value: "4",      delta: "P1 — orphaned",   cls: "red"  },
   { label: "Patch compliance",   value: "96%",    delta: "",                cls: "prog" },
+]
+
+const MY_TODOS: Ticket[] = [
+  {
+    id: "REQ-2207", priority: "p2", live: false,
+    title: "VPN access request · 3 contractors for AutoX project",
+    sub: "Requested by @sarah.obi · pre-approved",
+    status: "pending",
+    assignee: { initials: "RW", name: "Ritpol W." },
+    sla: "2h 18m", slaClass: "warn",
+    service: "access", age: "47m",
+  },
+  {
+    id: "INC-4183", priority: "p3", live: false,
+    title: "Email notifications not sending from xService alerts",
+    sub: "SMTP relay config · 3 users affected",
+    status: "investigating",
+    assignee: { initials: "RW", name: "Ritpol W." },
+    sla: "5h 30m",
+    service: "integrations", age: "1h 12m",
+  },
 ]
 
 const TABS = ["Active · 4", "Triage · 6", "Waiting · 2", "Done"]
@@ -337,6 +396,68 @@ export default function DashboardPage() {
             </div>
             <div className="d">Rotates in 2h 14m</div>
           </div>
+        </div>
+
+        {/* My To-do */}
+        <div className="sect-h" style={{ marginTop: 28 }}>
+          <h3>
+            My To-do{" "}
+            <span style={{ color: "var(--txt-4)", fontWeight: 400, fontSize: 14, marginLeft: 6 }}>{MY_TODOS.length}</span>
+          </h3>
+          <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--txt-4)", letterSpacing: ".04em" }}>assigned to me</span>
+        </div>
+
+        <div className="card" style={{ marginBottom: 8 }}>
+          {MY_TODOS.length === 0 ? (
+            <div style={{ padding: "20px 20px", textAlign: "center", color: "var(--txt-4)", fontSize: 13 }}>
+              No tasks assigned to you right now
+            </div>
+          ) : (
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th style={{ width: 48 }}></th>
+                  <th style={{ width: 90 }}>ID</th>
+                  <th>Title</th>
+                  <th style={{ width: 140 }}>Status</th>
+                  <th style={{ width: 110, textAlign: "right" }}>SLA</th>
+                  <th style={{ width: 110 }}>Service</th>
+                  <th style={{ width: 70, textAlign: "right" }}>Age</th>
+                </tr>
+              </thead>
+              <tbody>
+                {MY_TODOS.map((t) => (
+                  <tr
+                    key={t.id}
+                    className={t.id === selectedId ? "selected" : ""}
+                    onClick={() => setSelectedId(t.id)}
+                    style={
+                      t.id === selectedId
+                        ? { background: "linear-gradient(90deg,rgba(227,179,65,.08),rgba(227,179,65,.02) 40%,transparent)" }
+                        : undefined
+                    }
+                  >
+                    <td><PrioBadge p={t.priority} /></td>
+                    <td><span className="id">{t.id}</span></td>
+                    <td>
+                      <div className="ti">{t.title}</div>
+                      <div className="sub">{t.sub}</div>
+                    </td>
+                    <td><StatusPill status={t.status} /></td>
+                    <td style={{ textAlign: "right" }}>
+                      <span className={`sla${t.slaClass ? ` ${t.slaClass}` : ""}`}>{t.sla}</span>
+                    </td>
+                    <td>
+                      <span className="tag">{t.service}</span>
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      <span className="sla">{t.age}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Assets strip */}
