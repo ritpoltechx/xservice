@@ -24,6 +24,11 @@ import {
   RiSettings4Line,
   RiInformationLine,
   RiCodeBoxLine,
+  RiArrowDownSLine,
+  RiAlignLeft,
+  RiCheckboxLine,
+  RiCheckboxBlankCircleLine,
+  RiArrowDownCircleLine,
 } from "@remixicon/react"
 
 /* ── Types ── */
@@ -87,6 +92,26 @@ const SCOPE_COLOR: Record<FieldScope, string> = {
   "Work Tracker":    "var(--green)",
 }
 
+type DropdownItem =
+  | { type: "divider"; group: number }
+  | { value: FieldType; label: string; icon: React.ElementType; group: number }
+
+const DROPDOWN_ITEMS: DropdownItem[] = [
+  { value: "text", label: "Short answer", icon: RiText, group: 1 },
+  { value: "textarea", label: "Paragraph", icon: RiAlignLeft, group: 1 },
+  { type: "divider", group: 1.5 },
+  { value: "boolean", label: "Multiple choice", icon: RiCheckboxBlankCircleLine, group: 2 },
+  { value: "multiselect", label: "Checkboxes", icon: RiCheckboxLine, group: 2 },
+  { value: "select", label: "Dropdown", icon: RiArrowDownCircleLine, group: 2 },
+  { type: "divider", group: 2.5 },
+  { value: "date", label: "Date", icon: RiCalendarLine, group: 3 },
+  { type: "divider", group: 3.5 },
+  { value: "number", label: "Number", icon: RiHashtag, group: 4 },
+  { value: "url", label: "URL Link", icon: RiLink, group: 4 },
+  { value: "user", label: "User selector", icon: RiUser3Line, group: 4 },
+  { value: "reference", label: "Reference relation", icon: RiInputMethodLine, group: 4 },
+]
+
 const ROWS_OPTIONS = [10, 20, 50]
 
 /* ── Sub-components ── */
@@ -142,6 +167,7 @@ export default function FieldsPage() {
   const [formDesc, setFormDesc] = useState("")
   const [formRequired, setFormRequired] = useState(false)
   const [isApiKeyCustom, setIsApiKeyCustom] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
   // Automatically slugify name to API Key when typing in create mode
   useEffect(() => {
@@ -190,6 +216,7 @@ export default function FieldsPage() {
     setFormDesc("")
     setFormRequired(false)
     setIsApiKeyCustom(false)
+    setDropdownOpen(false)
     setShowFormModal(true)
   }
 
@@ -204,6 +231,7 @@ export default function FieldsPage() {
     setFormScope(field.scope)
     setFormDesc(field.description)
     setFormRequired(field.required)
+    setDropdownOpen(false)
     setShowFormModal(true)
   }
 
@@ -783,6 +811,162 @@ export default function FieldsPage() {
               />
             </div>
 
+            {/* Description */}
+            <div className="field">
+              <label>Description Helper Text</label>
+              <textarea
+                className="input"
+                rows={2}
+                value={formDesc}
+                onChange={(e) => setFormDesc(e.target.value)}
+                placeholder="Explains to users what to input in this field..."
+                style={{ resize: "none" }}
+              />
+            </div>
+
+            {/* Data Input Type custom dropdown */}
+            <div className="field" style={{ position: "relative" }}>
+              <label>Data Input Type</label>
+              {/* Trigger button */}
+              <button
+                type="button"
+                disabled={formMode === "edit"}
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="input"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 12px",
+                  fontSize: 13,
+                  background: "var(--bg-2)",
+                  border: "1px solid var(--line-2)",
+                  borderRadius: "var(--radius)",
+                  cursor: formMode === "edit" ? "not-allowed" : "pointer",
+                  width: "100%",
+                  textAlign: "left",
+                  color: "var(--txt)",
+                  opacity: formMode === "edit" ? 0.6 : 1,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {(() => {
+                    const selectedItem = DROPDOWN_ITEMS.find(item => 'value' in item && item.value === formType);
+                    if (selectedItem && 'icon' in selectedItem) {
+                      const Icon = selectedItem.icon;
+                      return (
+                        <>
+                          <Icon size={16} style={{ color: "var(--gold)" }} />
+                          <span>{selectedItem.label}</span>
+                        </>
+                      );
+                    }
+                    return <span>Select type...</span>;
+                  })()}
+                </div>
+                {formMode !== "edit" && <RiArrowDownSLine size={16} style={{ color: "var(--txt-4)" }} />}
+              </button>
+
+              {/* Dropdown Menu overlay */}
+              {dropdownOpen && formMode !== "edit" && (
+                <>
+                  {/* Click-away backdrop */}
+                  <div
+                    style={{
+                      position: "fixed",
+                      inset: 0,
+                      zIndex: 99,
+                      background: "transparent",
+                    }}
+                    onClick={() => setDropdownOpen(false)}
+                  />
+
+                  {/* Menu popup */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      right: 0,
+                      marginTop: 4,
+                      background: "var(--bg-3)",
+                      border: "1px solid var(--line-2)",
+                      borderRadius: 8,
+                      boxShadow: "0 10px 25px -5px rgba(0,0,0,.5), 0 0 0 1px var(--line)",
+                      zIndex: 100,
+                      maxHeight: 280,
+                      overflowY: "auto",
+                      padding: "6px 0",
+                      animation: "item-in .15s ease",
+                    }}
+                  >
+                    {DROPDOWN_ITEMS.map((item, idx) => {
+                      if ('type' in item && item.type === "divider") {
+                        return (
+                          <div
+                            key={`div-${idx}`}
+                            style={{
+                              height: 1,
+                              background: "var(--line-3)",
+                              margin: "6px 0",
+                            }}
+                          />
+                        )
+                      }
+
+                      if ('value' in item) {
+                        const Icon = item.icon
+                        const isSelected = formType === item.value
+                        return (
+                          <button
+                            key={item.value}
+                            type="button"
+                            onClick={() => {
+                              setFormType(item.value)
+                              setDropdownOpen(false)
+                            }}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              width: "100%",
+                              padding: "8px 16px",
+                              border: "none",
+                              background: isSelected ? "rgba(227,179,65,.1)" : "transparent",
+                              color: isSelected ? "var(--gold)" : "var(--txt-2)",
+                              fontSize: 13,
+                              cursor: "pointer",
+                              textAlign: "left",
+                              transition: "background .12s, color .12s",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.background = "var(--bg-4)"
+                                e.currentTarget.style.color = "var(--txt)"
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.background = "transparent"
+                                e.currentTarget.style.color = "var(--txt-2)"
+                              }
+                            }}
+                          >
+                            <Icon size={16} style={{ color: isSelected ? "var(--gold)" : "var(--txt-3)" }} />
+                            <span style={{ fontWeight: isSelected ? 600 : 400 }}>{item.label}</span>
+                            {isSelected && (
+                              <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700 }}>✓</span>
+                            )}
+                          </button>
+                        )
+                      }
+                      return null
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
             {/* API Key */}
             <div className="field">
               <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -801,59 +985,6 @@ export default function FieldsPage() {
                 disabled={formMode === "edit"}
                 placeholder="e.g. host_ip_address"
                 style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}
-              />
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              {/* Type */}
-              <div className="field">
-                <label>Data Input Type</label>
-                <select
-                  className="input"
-                  value={formType}
-                  onChange={(e) => setFormType(e.target.value as FieldType)}
-                  disabled={formMode === "edit"}
-                  style={{ fontSize: 12.5 }}
-                >
-                  <option value="text">Text (short)</option>
-                  <option value="textarea">Long Text (textarea)</option>
-                  <option value="number">Number</option>
-                  <option value="select">Select (dropdown)</option>
-                  <option value="multiselect">Multi-select checklist</option>
-                  <option value="date">Date</option>
-                  <option value="boolean">Boolean (toggle)</option>
-                  <option value="url">URL Link</option>
-                  <option value="user">User selector</option>
-                  <option value="reference">Reference relation</option>
-                </select>
-              </div>
-
-              {/* Scope */}
-              <div className="field">
-                <label>Flow Form Scope</label>
-                <select
-                  className="input"
-                  value={formScope}
-                  onChange={(e) => setFormScope(e.target.value as FieldScope)}
-                  style={{ fontSize: 12.5 }}
-                >
-                  {SCOPES.map(sc => (
-                    <option key={sc} value={sc}>{sc}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="field">
-              <label>Description Helper Text</label>
-              <textarea
-                className="input"
-                rows={2}
-                value={formDesc}
-                onChange={(e) => setFormDesc(e.target.value)}
-                placeholder="Explains to users what to input in this field..."
-                style={{ resize: "none" }}
               />
             </div>
 

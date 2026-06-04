@@ -969,7 +969,7 @@ export default function UserManagementPage() {
             </div>
             <div className="field" style={{ margin: 0 }}>
               <label>Organization</label>
-              <select className="input" value={newWsOrg} onChange={(e) => setNewWsOrg(e.target.value as OrgName)}>
+              <select className="input" style={{ paddingRight: 8 }} value={newWsOrg} onChange={(e) => setNewWsOrg(e.target.value as OrgName)}>
                 <option>SCB TechX</option><option>DataX</option><option>SCBx Group</option>
               </select>
             </div>
@@ -1012,13 +1012,13 @@ export default function UserManagementPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div className="field" style={{ margin: 0 }}>
                 <label>System role</label>
-                <select className="input" value={invRole} onChange={(e) => setInvRole(e.target.value as Role)}>
+                <select className="input" style={{ paddingRight: 8 }} value={invRole} onChange={(e) => setInvRole(e.target.value as Role)}>
                   <option>End User</option><option>Developer</option><option>Supporter</option><option>Administrator</option>
                 </select>
               </div>
               <div className="field" style={{ margin: 0 }}>
                 <label>Organization</label>
-                <select className="input" value={invOrg} onChange={(e) => setInvOrg(e.target.value as OrgName)}>
+                <select className="input" style={{ paddingRight: 8 }} value={invOrg} onChange={(e) => setInvOrg(e.target.value as OrgName)}>
                   <option>SCB TechX</option><option>DataX</option><option>SCBx Group</option>
                 </select>
               </div>
