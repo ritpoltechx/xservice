@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   RiInputMethodLine,
   RiAddLine,
@@ -20,6 +20,10 @@ import {
   RiUser3Line,
   RiFileCopyLine,
   RiLockLine,
+  RiCloseLine,
+  RiSettings4Line,
+  RiInformationLine,
+  RiCodeBoxLine,
 } from "@remixicon/react"
 
 /* ── Types ── */
@@ -123,6 +127,32 @@ export default function FieldsPage() {
   const [page, setPage]               = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [deleteId, setDeleteId]       = useState<number | null>(null)
+  
+  // Drawer / Detail state
+  const [selectedFieldId, setSelectedFieldId] = useState<number | null>(1)
+
+  // Form Modal state
+  const [showFormModal, setShowFormModal] = useState(false)
+  const [formMode, setFormMode] = useState<"create" | "edit">("create")
+  const [formFieldId, setFormFieldId] = useState<number | null>(null)
+  const [formName, setFormName] = useState("")
+  const [formApiKey, setFormApiKey] = useState("")
+  const [formType, setFormType] = useState<FieldType>("text")
+  const [formScope, setFormScope] = useState<FieldScope>("Global")
+  const [formDesc, setFormDesc] = useState("")
+  const [formRequired, setFormRequired] = useState(false)
+  const [isApiKeyCustom, setIsApiKeyCustom] = useState(false)
+
+  // Automatically slugify name to API Key when typing in create mode
+  useEffect(() => {
+    if (formMode === "create" && !isApiKeyCustom) {
+      const slugified = formName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]+/g, "")
+        .replace(/\s+/g, "_")
+      setFormApiKey(slugified)
+    }
+  }, [formName, formMode, isApiKeyCustom])
 
   const allTypes = Array.from(new Set(INITIAL_FIELDS.map((f) => f.type))) as FieldType[]
 
@@ -149,13 +179,175 @@ export default function FieldsPage() {
     { label: "Required",       value: String(requiredCount), icon: RiCheckboxCircleLine, color: "var(--gold)"  },
   ]
 
+  // Open Form modal for creation
+  const handleOpenCreate = () => {
+    setFormMode("create")
+    setFormFieldId(null)
+    setFormName("")
+    setFormApiKey("")
+    setFormType("text")
+    setFormScope("Global")
+    setFormDesc("")
+    setFormRequired(false)
+    setIsApiKeyCustom(false)
+    setShowFormModal(true)
+  }
+
+  // Open Form modal for editing
+  const handleOpenEdit = (e: React.MouseEvent, field: Field) => {
+    e.stopPropagation()
+    setFormMode("edit")
+    setFormFieldId(field.id)
+    setFormName(field.name)
+    setFormApiKey(field.apiKey)
+    setFormType(field.type)
+    setFormScope(field.scope)
+    setFormDesc(field.description)
+    setFormRequired(field.required)
+    setShowFormModal(true)
+  }
+
+  // Handle Form Submission
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formName.trim() || !formApiKey.trim()) return
+
+    if (formMode === "create") {
+      const newId = Math.max(...fields.map(f => f.id)) + 1
+      const newField: Field = {
+        id: newId,
+        name: formName,
+        apiKey: formApiKey,
+        description: formDesc,
+        type: formType,
+        scope: formScope,
+        required: formRequired,
+        system: false,
+        usedIn: 0,
+        lastModified: "Just now",
+      }
+      setFields(prev => [...prev, newField])
+      setSelectedFieldId(newField.id)
+    } else {
+      setFields(prev => prev.map(f => {
+        if (f.id === formFieldId) {
+          return {
+            ...f,
+            name: formName,
+            apiKey: formApiKey,
+            description: formDesc,
+            type: formType,
+            scope: formScope,
+            required: formRequired,
+            lastModified: "Just now",
+          }
+        }
+        return f
+      }))
+    }
+    setShowFormModal(false)
+  }
+
+  // Handle Duplication
+  const handleDuplicate = (e: React.MouseEvent, field: Field) => {
+    e.stopPropagation()
+    const newId = Math.max(...fields.map(f => f.id)) + 1
+    const duplicated: Field = {
+      ...field,
+      id: newId,
+      name: `${field.name} (Copy)`,
+      apiKey: `${field.apiKey}_copy`,
+      system: false,
+      usedIn: 0,
+      lastModified: "Just now",
+    }
+    setFields(prev => [...prev, duplicated])
+    setSelectedFieldId(duplicated.id)
+  }
+
+  // Handle Deletion Confirmation
+  const handleDeleteConfirm = () => {
+    if (deleteId === null) return
+    setFields(prev => prev.filter(f => f.id !== deleteId))
+    if (selectedFieldId === deleteId) {
+      setSelectedFieldId(null)
+    }
+    setDeleteId(null)
+  }
+
+  // Selected Field resolution
+  const selectedField = fields.find(f => f.id === selectedFieldId)
+
+  // Render a live input preview based on field type
+  const renderPreviewInput = (type: FieldType) => {
+    switch (type) {
+      case "text":
+        return <input type="text" className="input" placeholder="Type text..." style={{ padding: "8px 10px", fontSize: 13 }} />
+      case "textarea":
+        return <textarea className="input" placeholder="Type multi-line description..." rows={2} style={{ padding: "8px 10px", fontSize: 13, resize: "none" }} />
+      case "number":
+        return <input type="number" className="input" placeholder="0" style={{ padding: "8px 10px", fontSize: 13 }} />
+      case "select":
+        return (
+          <select className="input" style={{ padding: "8px 10px", fontSize: 13 }}>
+            <option>Option A</option>
+            <option>Option B</option>
+            <option>Option C</option>
+          </select>
+        )
+      case "multiselect":
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, padding: "8px 10px", border: "1px solid var(--line-3)", borderRadius: "var(--radius)", background: "var(--bg-3)" }}>
+            <span className="tag" style={{ fontSize: 11 }}>Selected Option 1</span>
+            <span className="tag" style={{ fontSize: 11 }}>Selected Option 2</span>
+            <span style={{ fontSize: 12.5, color: "var(--txt-4)", paddingLeft: 4 }}>+ Click to add</span>
+          </div>
+        )
+      case "date":
+        return <input type="date" className="input" style={{ padding: "8px 10px", fontSize: 13 }} />
+      case "boolean":
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button
+              type="button"
+              style={{
+                width: 32, height: 18, borderRadius: 9, border: "none",
+                background: "linear-gradient(135deg, var(--gold-2), var(--gold))",
+                position: "relative", cursor: "pointer",
+              }}
+            >
+              <span style={{ position: "absolute", top: 2, left: 16, width: 14, height: 14, borderRadius: "50%", background: "#fff" }}/>
+            </button>
+            <span style={{ fontSize: 12.5, color: "var(--txt-2)" }}>Enabled</span>
+          </div>
+        )
+      case "url":
+        return <input type="url" className="input" placeholder="https://example.com" style={{ padding: "8px 10px", fontSize: 13 }} />
+      case "user":
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", border: "1px solid var(--line-3)", borderRadius: "var(--radius)", background: "var(--bg-3)" }}>
+            <span className="av" style={{ width: 18, height: 18, fontSize: 8.5 }}>MC</span>
+            <span style={{ fontSize: 12.5, color: "var(--txt-2)" }}>Maya Chen</span>
+          </div>
+        )
+      case "reference":
+        return (
+          <div style={{ display: "flex", alignItems: "center", padding: "8px 10px", border: "1px solid var(--line-3)", borderRadius: "var(--radius)", background: "var(--bg-3)", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 12.5, color: "var(--txt-4)" }}>Reference record lookup...</span>
+            <RiSearchLine size={12} style={{ color: "var(--txt-4)" }} />
+          </div>
+        )
+    }
+  }
+
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflowY: "auto" }}>
-      <main style={{ flex: 1, padding: "28px 32px 48px", display: "flex", flexDirection: "column", gap: 0 }}>
+    <div style={{ display: "flex", flex: 1, minWidth: 0 }}>
+      {/* ── Main Panel ── */}
+      <main style={{ flex: 1, padding: "28px 32px 48px", display: "flex", flexDirection: "column", gap: 0, overflowY: "auto", minWidth: 0 }}>
 
         {/* Breadcrumb */}
         <nav className="crumb">
-          <a href="#">Administration</a>
+          <a href="/dashboard">Administration</a>
           <span className="sep">/</span>
           <a href="#">Customization</a>
           <span className="sep">/</span>
@@ -166,7 +358,7 @@ export default function FieldsPage() {
         <div className="title-row" style={{ marginBottom: 24 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <h1>Fields</h1>
+              <h1 style={{ color: "var(--txt)" }}>Fields</h1>
               <div style={{
                 width: 32, height: 32, borderRadius: 8,
                 background: "rgba(76,183,130,.10)", border: "1px solid rgba(76,183,130,.25)",
@@ -177,7 +369,12 @@ export default function FieldsPage() {
             </div>
             <p className="sub">Define and manage custom fields available across ticket forms.</p>
           </div>
-          <button type="button" className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleOpenCreate}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
             <RiAddLine size={14} />
             New Field
           </button>
@@ -200,7 +397,7 @@ export default function FieldsPage() {
         <div className="card" style={{ flex: 1 }}>
           {/* Toolbar */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 20px", borderBottom: "1px solid var(--line-2)", flexWrap: "wrap" }}>
-            <div className="search" style={{ maxWidth: 280 }}>
+            <div className="search" style={{ maxWidth: 220 }}>
               <RiSearchLine size={13} style={{ color: "var(--txt-4)", flexShrink: 0 }} />
               <input
                 value={search}
@@ -262,6 +459,7 @@ export default function FieldsPage() {
             </div>
           </div>
 
+          {/* Table */}
           {paged.length === 0 ? (
             <div style={{ padding: "48px 20px", textAlign: "center", color: "var(--txt-4)", fontSize: 13 }}>
               No fields match your search.
@@ -272,9 +470,9 @@ export default function FieldsPage() {
                 <tr>
                   <th style={{ width: 56, paddingLeft: 20 }}>ID</th>
                   <th>Name &amp; Description</th>
-                  <th style={{ width: 80, fontFamily: "var(--font-mono)", fontSize: 11 }}>API key</th>
+                  <th style={{ width: 140, fontFamily: "var(--font-mono)", fontSize: 11 }}>API key</th>
                   <th style={{ width: 130 }}>Type</th>
-                  <th style={{ width: 150 }}>Scope</th>
+                  <th style={{ width: 130 }}>Scope</th>
                   <th style={{ width: 80, textAlign: "center" }}>Required</th>
                   <th style={{ width: 80, textAlign: "center" }}>Used in</th>
                   <th style={{ width: 90 }}>Modified</th>
@@ -283,7 +481,16 @@ export default function FieldsPage() {
               </thead>
               <tbody>
                 {paged.map((f) => (
-                  <tr key={f.id}>
+                  <tr
+                    key={f.id}
+                    onClick={() => setSelectedFieldId(f.id)}
+                    className={selectedFieldId === f.id ? "selected" : ""}
+                    style={
+                      selectedFieldId === f.id
+                        ? { background: "linear-gradient(90deg,rgba(227,179,65,.08),rgba(227,179,65,.02) 40%,transparent)" }
+                        : undefined
+                    }
+                  >
                     <td style={{ paddingLeft: 20 }}>
                       <span className="id" style={{ fontWeight: 600 }}>#{f.id}</span>
                     </td>
@@ -301,7 +508,7 @@ export default function FieldsPage() {
                           </span>
                         )}
                       </div>
-                      <div className="sub" style={{ maxWidth: 340, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div className="sub" style={{ maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {f.description}
                       </div>
                     </td>
@@ -326,16 +533,30 @@ export default function FieldsPage() {
                     <td>
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--txt-4)" }}>{f.lastModified}</span>
                     </td>
-                    <td style={{ paddingRight: 20 }}>
+                    <td style={{ paddingRight: 20 }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end" }}>
-                        <button type="button" className="iconbtn" title="Edit" disabled={f.system} style={{ opacity: f.system ? 0.3 : 1 }}>
+                        <button
+                          type="button"
+                          className="iconbtn"
+                          title={f.system ? "System fields cannot be edited" : "Edit"}
+                          disabled={f.system}
+                          onClick={(e) => handleOpenEdit(e, f)}
+                          style={{ opacity: f.system ? 0.3 : 1 }}
+                        >
                           <RiEditLine size={13} />
                         </button>
-                        <button type="button" className="iconbtn" title="Duplicate">
+                        <button
+                          type="button"
+                          className="iconbtn"
+                          title="Duplicate"
+                          onClick={(e) => handleDuplicate(e, f)}
+                        >
                           <RiFileCopyLine size={13} />
                         </button>
                         <button
-                          type="button" className="iconbtn" title={f.system ? "System fields cannot be deleted" : "Delete"}
+                          type="button"
+                          className="iconbtn"
+                          title={f.system ? "System fields cannot be deleted" : "Delete"}
                           disabled={f.system}
                           onClick={() => !f.system && setDeleteId(f.id)}
                           style={{ color: f.system ? "var(--txt-5)" : "var(--red)", opacity: f.system ? 0.3 : 1 }}
@@ -362,7 +583,7 @@ export default function FieldsPage() {
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-                className="iconbtn" style={{ opacity: page <= 1 ? 0.4 : 1 }}>
+                className="iconbtn" style={{ opacity: page <= 1 ? 0.4 : 1, cursor: page <= 1 ? "default" : "pointer" }}>
                 <RiArrowLeftSLine size={14} />
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
@@ -373,7 +594,7 @@ export default function FieldsPage() {
                 </button>
               ))}
               <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
-                className="iconbtn" style={{ opacity: page >= totalPages ? 0.4 : 1 }}>
+                className="iconbtn" style={{ opacity: page >= totalPages ? 0.4 : 1, cursor: page >= totalPages ? "default" : "pointer" }}>
                 <RiArrowRightSLine size={14} />
               </button>
             </div>
@@ -399,7 +620,275 @@ export default function FieldsPage() {
         </div>
       </main>
 
-      {/* Delete modal */}
+      {/* ── Right Rail Field Configuration Sidebar ── */}
+      {selectedField && (
+        <aside className="rail" style={{ width: 360, flexShrink: 0, animation: "item-in .2s ease-out" }}>
+          {/* Header */}
+          <div className="rail-hd">
+            <RiSettings4Line size={13} style={{ color: "var(--gold)" }} />
+            <span className="t-mono">FIELD SPECIFICATION</span>
+            <button
+              type="button"
+              className="close"
+              onClick={() => setSelectedFieldId(null)}
+            >
+              <RiCloseLine size={14} />
+            </button>
+          </div>
+
+          {/* Profile Card Header */}
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 8,
+              background: "var(--bg-3)", border: "1px solid var(--line-2)",
+              display: "grid", placeItems: "center",
+              color: FIELD_TYPE_META[selectedField.type].color,
+            }}>
+              {(() => {
+                const Icon = FIELD_TYPE_META[selectedField.type].icon
+                return <Icon size={18} />
+              })()}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: "var(--txt)", margin: 0 }}>
+                {selectedField.name}
+              </h2>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--txt-4)", marginTop: 2 }}>
+                Key API: {selectedField.apiKey}
+              </div>
+            </div>
+          </div>
+
+          {/* Metadata Card Info */}
+          <div className="card" style={{ padding: "16px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--gold)", letterSpacing: ".05em" }}>
+              VALIDATION SCHEMA
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[
+                { k: "Field Scope Scope", v: <ScopeBadge scope={selectedField.scope} /> },
+                { k: "Input Element Type", v: <FieldTypeBadge type={selectedField.type} /> },
+                { k: "Required Constraint", v: selectedField.required ? <span style={{ color: "var(--gold)", fontWeight: 600 }}>REQUIRED</span> : <span style={{ color: "var(--txt-4)" }}>OPTIONAL</span> },
+                { k: "System Field Status", v: selectedField.system ? <span style={{ color: "var(--txt-4)", fontWeight: 500 }}>IMMUTABLE SYSTEM</span> : <span style={{ color: "var(--green)", fontWeight: 500 }}>CUSTOMIZABLE</span> },
+                { k: "Active in Forms Count", v: <span style={{ fontFamily: "var(--font-mono)" }}>{selectedField.usedIn} ticket flow templates</span> }
+              ].map(row => (
+                <div key={row.k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5 }}>
+                  <span style={{ color: "var(--txt-3)" }}>{row.k}</span>
+                  <span style={{ color: "var(--txt-2)", fontWeight: 500 }}>{row.v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <div className="rail-section-h">Description Summary</div>
+            <p style={{ fontSize: 13, color: "var(--txt-3)", lineHeight: 1.5, margin: "6px 0 0" }}>
+              {selectedField.description || "No description provided for this field."}
+            </p>
+          </div>
+
+          {/* Live Preview Element Visualizer */}
+          <div>
+            <div className="rail-section-h">Form Render Preview</div>
+            <p style={{ fontSize: 11.5, color: "var(--txt-4)", margin: "4px 0 10px", lineHeight: 1.45 }}>
+              This is how the custom input element will render visually to end-users inside active forms.
+            </p>
+
+            <div className="card" style={{ padding: "16px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 11, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: ".05em", color: "var(--txt-3)", display: "flex", gap: 4 }}>
+                {selectedField.name}
+                {selectedField.required && <span style={{ color: "var(--red)" }}>*</span>}
+              </label>
+              <div style={{ marginTop: 4 }}>
+                {renderPreviewInput(selectedField.type)}
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar Quick Actions */}
+          {!selectedField.system && (
+            <div style={{ marginTop: "auto", display: "flex", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={(e) => handleOpenEdit(e, selectedField)}
+                style={{ flex: 1, justifyContent: "center" }}
+              >
+                <RiEditLine size={13} />
+                Edit Settings
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                onClick={() => setDeleteId(selectedField.id)}
+                style={{ display: "grid", placeItems: "center", width: 34, height: 30, padding: 0 }}
+              >
+                <RiDeleteBinLine size={13} />
+              </button>
+            </div>
+          )}
+        </aside>
+      )}
+
+      {/* ── New/Edit Form Modal ── */}
+      {showFormModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 100,
+          background: "rgba(0,0,0,.6)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+        onClick={() => setShowFormModal(false)}
+        >
+          <form
+            onSubmit={handleFormSubmit}
+            onClick={(e) => e.stopPropagation()}
+            className="card"
+            style={{
+              width: 460,
+              padding: "28px 28px 24px",
+              boxShadow: "0 32px 64px -16px rgba(0,0,0,.8), 0 0 0 1px var(--line)",
+              animation: "item-in .18s ease",
+              display: "flex", flexDirection: "column", gap: 16,
+            }}
+          >
+            {/* Header info */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 10,
+                background: "rgba(76,183,130,.10)", border: "1px solid rgba(76,183,130,.25)",
+                display: "grid", placeItems: "center", color: "var(--green)"
+              }}>
+                <RiInputMethodLine size={20} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: "var(--green)", fontWeight: 600 }}>Customization Settings</div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--txt)" }}>
+                  {formMode === "create" ? "Define New Custom Field" : `Configure Field: ${formName}`}
+                </h3>
+              </div>
+            </div>
+
+            {/* Name */}
+            <div className="field">
+              <label>Field Name Label</label>
+              <input
+                type="text"
+                required
+                className="input"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="e.g. Host IP Address"
+              />
+            </div>
+
+            {/* API Key */}
+            <div className="field">
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <RiCodeBoxLine size={12} />
+                API Identifier Key (JSON key)
+              </label>
+              <input
+                type="text"
+                required
+                className="input"
+                value={formApiKey}
+                onChange={(e) => {
+                  setFormApiKey(e.target.value)
+                  setIsApiKeyCustom(true)
+                }}
+                disabled={formMode === "edit"}
+                placeholder="e.g. host_ip_address"
+                style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {/* Type */}
+              <div className="field">
+                <label>Data Input Type</label>
+                <select
+                  className="input"
+                  value={formType}
+                  onChange={(e) => setFormType(e.target.value as FieldType)}
+                  disabled={formMode === "edit"}
+                  style={{ fontSize: 12.5 }}
+                >
+                  <option value="text">Text (short)</option>
+                  <option value="textarea">Long Text (textarea)</option>
+                  <option value="number">Number</option>
+                  <option value="select">Select (dropdown)</option>
+                  <option value="multiselect">Multi-select checklist</option>
+                  <option value="date">Date</option>
+                  <option value="boolean">Boolean (toggle)</option>
+                  <option value="url">URL Link</option>
+                  <option value="user">User selector</option>
+                  <option value="reference">Reference relation</option>
+                </select>
+              </div>
+
+              {/* Scope */}
+              <div className="field">
+                <label>Flow Form Scope</label>
+                <select
+                  className="input"
+                  value={formScope}
+                  onChange={(e) => setFormScope(e.target.value as FieldScope)}
+                  style={{ fontSize: 12.5 }}
+                >
+                  {SCOPES.map(sc => (
+                    <option key={sc} value={sc}>{sc}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="field">
+              <label>Description Helper Text</label>
+              <textarea
+                className="input"
+                rows={2}
+                value={formDesc}
+                onChange={(e) => setFormDesc(e.target.value)}
+                placeholder="Explains to users what to input in this field..."
+                style={{ resize: "none" }}
+              />
+            </div>
+
+            {/* Constraints */}
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--txt-2)", cursor: "pointer", marginTop: 4 }}>
+              <input
+                type="checkbox"
+                checked={formRequired}
+                onChange={(e) => setFormRequired(e.target.checked)}
+                style={{ accentColor: "var(--gold)", width: 14, height: 14 }}
+              />
+              Required (Validation blocks submission if left empty)
+            </label>
+
+            {/* Actions */}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowFormModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+              >
+                {formMode === "create" ? "Create Field" : "Save Settings"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ── Delete confirmation modal ── */}
       {deleteId !== null && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 100,
@@ -419,12 +908,12 @@ export default function FieldsPage() {
               Delete field #{deleteId}?
             </h3>
             <p style={{ margin: "0 0 24px", fontSize: 13, color: "var(--txt-3)", lineHeight: 1.55 }}>
-              This cannot be undone. All forms using this field will lose it permanently.
+              This cannot be undone. All ticket form designs using this custom field will lose it and any associated data permanently.
             </p>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button type="button" onClick={() => setDeleteId(null)} className="btn btn-secondary">Cancel</button>
               <button type="button"
-                onClick={() => { setFields((f) => f.filter((x) => x.id !== deleteId)); setDeleteId(null) }}
+                onClick={handleDeleteConfirm}
                 className="btn btn-danger">
                 Delete field
               </button>

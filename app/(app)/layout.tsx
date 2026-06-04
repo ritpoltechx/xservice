@@ -813,7 +813,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </nav>
 
             {/* Bottom nav — pinned to bottom */}
-            <nav style={{ padding: sideCollapsed ? "4px 6px" : "4px 10px", borderTop: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 1 }}>
+            <nav style={{ padding: sideCollapsed ? "4px 6px 32px" : "4px 10px 32px", borderTop: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 1 }}>
               {computedBottom.map((section, si) => (
                 <NavSectionBlock key={si} section={section} si={si} sideCollapsed={sideCollapsed} />
               ))}
