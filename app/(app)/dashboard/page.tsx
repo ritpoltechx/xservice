@@ -1,15 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import {
   RiArrowUpLine,
   RiArrowDownLine,
   RiCloseLine,
   RiSendPlaneLine,
   RiAttachmentLine,
-  RiDownloadLine,
-  RiFilterLine,
-  RiAddLine,
+  RiSparklingLine,
+  RiArrowRightLine,
 } from "@remixicon/react"
 
 /* ── Types ── */
@@ -263,6 +262,15 @@ export default function DashboardPage() {
   const [updateText, setUpdateText] = useState(
     "Rolling back v3.18.3 → v3.18.2. ETA 4m. Will re-measure p95 on return."
   )
+  const [aiPrompt, setAiPrompt] = useState("")
+  const [aiThinking, setAiThinking] = useState(false)
+  const aiRef = useRef<HTMLTextAreaElement>(null)
+
+  function handleAiSubmit() {
+    if (!aiPrompt.trim() || aiThinking) return
+    setAiThinking(true)
+    setTimeout(() => { setAiThinking(false); setAiPrompt("") }, 1800)
+  }
 
   const rail = RAIL_DATA[selectedId] ?? RAIL_DATA["INC-4182"]
   const selectedTicket = TICKETS.find((t) => t.id === selectedId)!
@@ -284,26 +292,12 @@ export default function DashboardPage() {
         <div className="title-row">
           <div>
             <h1>
-              Good evening, <span className="accent">Asha.</span>
+              Access Request
             </h1>
             <p className="sub">
               Three tickets are breaching SLA in under an hour, and one P1 incident
               is in mitigation. The rest of your queue is steady.
             </p>
-          </div>
-          <div className="actions">
-            <button className="btn btn-secondary">
-              <RiDownloadLine size={13} />
-              Export
-            </button>
-            <button className="btn btn-secondary">
-              <RiFilterLine size={13} />
-              Filter
-            </button>
-            <button className="btn btn-primary">
-              <RiAddLine size={13} />
-              New ticket <span className="kbd">C</span>
-            </button>
           </div>
         </div>
 
@@ -597,6 +591,119 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* ── AI Triage Prompt ── */}
+        <div style={{
+          borderRadius: 10,
+          border: "1px solid rgba(139,92,246,.28)",
+          background: "linear-gradient(145deg, rgba(94,106,210,.06) 0%, rgba(139,92,246,.04) 100%)",
+          overflow: "hidden",
+        }}>
+          {/* Header */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 7,
+            padding: "9px 12px 8px",
+            borderBottom: "1px solid rgba(139,92,246,.14)",
+          }}>
+            <RiSparklingLine size={12} style={{ color: "#8B5CF6", flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#a78bfa", letterSpacing: ".02em" }}>
+              AI Triage
+            </span>
+            {aiThinking && (
+              <span style={{
+                marginLeft: 4, fontSize: 10, color: "var(--txt-4)",
+                fontFamily: "var(--font-mono)", letterSpacing: ".08em",
+                animation: "pulse 1s ease-in-out infinite",
+              }}>thinking…</span>
+            )}
+            <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+              {[
+                { label: "Recall agent", action: "Recall the on-call agent for this incident" },
+                { label: "Send to workflow", action: "Send this ticket to the escalation workflow" },
+              ].map(({ label, action }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => { setAiPrompt(action); aiRef.current?.focus() }}
+                  style={{
+                    fontSize: 10.5, padding: "3px 8px", borderRadius: 999,
+                    background: "rgba(139,92,246,.10)", border: "1px solid rgba(139,92,246,.22)",
+                    color: "#a78bfa", cursor: "pointer", fontFamily: "inherit",
+                    transition: "background .12s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(139,92,246,.18)" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(139,92,246,.10)" }}
+                >{label}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Prompt suggestions */}
+          {!aiPrompt && (
+            <div style={{ padding: "8px 12px 0", display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {[
+                "Summarise this incident",
+                "Draft postmortem",
+                "Who should I page?",
+                "Check runbooks",
+              ].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => { setAiPrompt(s); aiRef.current?.focus() }}
+                  style={{
+                    fontSize: 11, padding: "4px 9px", borderRadius: 999,
+                    background: "var(--bg-3)", border: "1px solid var(--line-3)",
+                    color: "var(--txt-3)", cursor: "pointer", fontFamily: "inherit",
+                    transition: "color .12s, border-color .12s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--txt)"; e.currentTarget.style.borderColor = "var(--line-4)" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--txt-3)"; e.currentTarget.style.borderColor = "var(--line-3)" }}
+                >{s}</button>
+              ))}
+            </div>
+          )}
+
+          {/* Input row */}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "8px 10px 10px" }}>
+            <textarea
+              ref={aiRef}
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleAiSubmit() } }}
+              placeholder="Ask AI to triage, recall agent, or trigger a workflow…"
+              rows={2}
+              style={{
+                flex: 1, resize: "none", border: "none", background: "transparent",
+                color: "var(--txt)", fontFamily: "inherit", fontSize: 12.5,
+                lineHeight: 1.5, outline: "none",
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleAiSubmit}
+              disabled={!aiPrompt.trim() || aiThinking}
+              style={{
+                width: 28, height: 28, borderRadius: 7, flexShrink: 0,
+                background: aiPrompt.trim() && !aiThinking
+                  ? "linear-gradient(135deg, #5E6AD2, #8B5CF6)"
+                  : "var(--bg-4)",
+                border: "1px solid " + (aiPrompt.trim() && !aiThinking ? "rgba(139,92,246,.5)" : "var(--line-3)"),
+                color: aiPrompt.trim() && !aiThinking ? "#fff" : "var(--txt-5)",
+                display: "grid", placeItems: "center", cursor: aiPrompt.trim() ? "pointer" : "default",
+                transition: "background .15s, border-color .15s, color .15s",
+              }}
+            >
+              <RiArrowRightLine size={13} />
+            </button>
+          </div>
+          <div style={{
+            padding: "0 12px 7px",
+            fontFamily: "var(--font-mono)", fontSize: 9.5, color: "var(--txt-5)", letterSpacing: ".04em",
+          }}>
+            <span className="kbd" style={{ fontSize: 9 }}>⌘↵</span>{" "}to send · powered by xAI
+          </div>
+        </div>
 
         {/* Composer */}
         <div className="composer">
